@@ -1,0 +1,59 @@
+<html>
+
+<head>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.15/css/jquery.dataTables.min.css">
+    
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://cdn.datatables.net/1.10.15/js/jquery.dataTables.min.js"></script>
+</head>
+
+<script>
+$( document ).ready( function() {
+    //Create and append select list
+    var selectList = document.createElement("select");
+    selectList.id = "queryList";
+    document.getElementById("queryDiv").appendChild(selectList);
+
+    //Create and append the options
+    for (var i = 0; i < 8; i++) {
+        var option = document.createElement("option");
+        option.value = i;
+        option.text = 'Query 2.' + String.fromCharCode(97 + i);
+        selectList.appendChild(option);
+    }
+    
+    $('#go').on('click', function () {
+        var q_sel = $("#queryList").val();
+        console.log(q_sel);
+        
+        $.ajax({
+            "type": "POST",
+            "dataType": "json",
+            "data": {"query_id": q_sel},
+            "url": "{{ url_for('get_data') }}",
+            "success": function(data) {
+                $('#tableDiv').empty();
+                
+                var table = document.createElement("table");
+                table.id = "result";
+                table.class = "disp.play";
+                document.getElementById("tableDiv").appendChild(table);
+                
+                console.log(data);
+                $('#result').DataTable(data);
+            },
+        });
+    });
+});
+</script>
+
+<body>
+    <div class="container">
+        <div id="queryDiv"></div>
+        <button id="go">Go</button>
+        <div id="tableDiv"></div>
+    </div>
+</body>
+
+</html>
