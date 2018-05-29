@@ -2,14 +2,29 @@
 
 <head>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    
+    <!-- tab -->
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    
+    
+    <!-- jQuery DataTable -->
+    <script src="https://cdn.datatables.net/1.10.15/js/jquery.dataTables.min.js"></script>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.10.15/css/jquery.dataTables.min.css">
     
-    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
-    <script src="https://cdn.datatables.net/1.10.15/js/jquery.dataTables.min.js"></script>
+    <!-- bootstrap dialog -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.34.7/css/bootstrap-dialog.min.css">
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap3-dialog/1.34.7/js/bootstrap-dialog.min.js"></script>
 </head>
 
 <script>
-$( document ).ready( function() {
+
+function createQueryList(){
     //Create and append select list
     var selectList = document.createElement("select");
     selectList.id = "queryList";
@@ -22,36 +37,136 @@ $( document ).ready( function() {
         option.text = 'Query 2.' + String.fromCharCode(97 + i);
         selectList.appendChild(option);
     }
+};
+
+function hasInfo(columns, infoType){
+    var i = 0;
+    var ret = [];
+    for(i = 0; i < columns.length; i++){
+        if('idType' in columns[i] && columns[i].idType === infoType){
+            ret.push(i);
+        }
+    }
+    return ret;
+};
+
+function showInfo(cell) {
+    console.log(cell);
+    var id = cell.getAttribute("id").substring(2);
+    var idType = cell.getAttribute("id").substring(0, 1);
+    var title = cell.textContent;
+    $.ajax({
+        type: "POST",
+        dataType: "text",
+        url: "{{ url_for('get_info') }}",
+        data: {[idType]: id},
+        success: function(data, status, xhr) {
+            console.log(data);
+            BootstrapDialog.show({
+                title: title,
+                message: data,
+            });
+        },
+    });
+    return false;
+}
+
+function ajaxDrawTable(data){
+    $.ajax({
+        type: "POST",
+        dataType: "json",
+        data: data,
+        url: "{{ url_for('get_data') }}",
+        success: function (data) {
+            $("#tableDiv").empty();
+
+            var table = document.createElement("table");
+            table.id = "result";
+            table.class = "display";
+            document.getElementById("tableDiv").appendChild(table);
+            
+            console.log(data);
+            $("#result").DataTable({
+                "data": data.data,
+                "columns": data.columns,
+                "columnDefs": [
+                    {
+                        targets: hasInfo(data.columns, "person"),
+                        createdCell: function (td, cellData, rowData, row, col){
+                            $(td).attr("id", "p_" + rowData.personId.toString());
+                            $(td).html("<a href='##' onclick='showInfo(this.parentElement);'>" + cellData + "</a>");
+                            console.log(td);
+                        },
+                    },
+                    {
+                        targets: hasInfo(data.columns, "film"),
+                        createdCell: function (td, cellData, rowData, row, col){
+                            $(td).attr("id", "f_" + rowData.filmId.toString());
+                            $(td).html("<a href='##' onclick='showInfo(this.parentElement);'>" + cellData + "</a>");
+                            console.log(td);
+                        },
+                    },
+                ],
+            });
+        },
+    });
+};
+
+$( document ).ready( function() {
+
+    createQueryList();
     
-    $('#go').on('click', function () {
-        var q_sel = $("#queryList").val();
-        console.log(q_sel);
+    $("#tabDiv").tabs();
+    
+    $("#searchButton").click( function () {
+        var keyWord = $("#searchBox").val();
+        console.log(keyWord);
         
-        $.ajax({
-            "type": "POST",
-            "dataType": "json",
-            "data": {"query_id": q_sel},
-            "url": "{{ url_for('get_data') }}",
-            "success": function(data) {
-                $('#tableDiv').empty();
-                
-                var table = document.createElement("table");
-                table.id = "result";
-                table.class = "disp.play";
-                document.getElementById("tableDiv").appendChild(table);
-                
-                console.log(data);
-                $('#result').DataTable(data);
-            },
-        });
+        var data = {keyWord: keyWord};
+        
+        ajaxDrawTable(data);
+    });
+    
+    $('#queryButton').on('click', function () {
+        var queryId = $("#queryList").val();
+        console.log(queryId);
+        
+        var data = {queryId: queryId};
+        
+        ajaxDrawTable(data);
     });
 });
 </script>
 
 <body>
     <div class="container">
-        <div id="queryDiv"></div>
-        <button id="go">Go</button>
+        <div id="tabDiv">
+            <ul>
+                <li><a href="#tabSearch">Search</a></li>
+                <li><a href="#tabQuery">Predefined queries</a></li>
+                <li><a href="#tabInsert">Insert data</a></li>
+            </ul>
+            
+            <div id="tabSearch">
+                Name/Title: <input type="text" id="searchBox">
+                
+                <button id="searchButton">Search</button>
+            </div>
+            
+            <div id="tabQuery">
+                <div id="queryDiv"></div>
+                
+                <button id="queryButton">Go</button>
+            </div>
+            
+            <div id="tabInsert">
+                <p>Mauris eleifend est et turpis. Duis id erat. Suspendisse potenti. Aliquam vulputate, pede vel vehicula accumsan, mi neque rutrum erat, eu congue orci lorem eget lorem. Vestibulum non ante. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Fusce sodales. Quisque eu urna vel enim commodo pellentesque. Praesent eu risus hendrerit ligula tempus pretium. Curabitur lorem enim, pretium nec, feugiat nec, luctus a, lacus.</p>
+                <p>Duis cursus. Maecenas ligula eros, blandit nec, pharetra at, semper at, magna. Nullam ac lacus. Nulla facilisi. Praesent viverra justo vitae neque. Praesent blandit adipiscing velit. Suspendisse potenti. Donec mattis, pede vel pharetra blandit, magna ligula faucibus eros, id euismod lacus dolor eget odio. Nam scelerisque. Donec non libero sed nulla mattis commodo. Ut sagittis. Donec nisi lectus, feugiat porttitor, tempor ac, tempor vitae, pede. Aenean vehicula velit eu tellus interdum rutrum. Maecenas commodo. Pellentesque nec elit. Fusce in lacus. Vivamus a libero vitae lectus hendrerit hendrerit.</p>
+                
+                <button id="insertButton">Insert</button>
+            </div>
+        </div>
+        
         <div id="tableDiv"></div>
     </div>
 </body>
