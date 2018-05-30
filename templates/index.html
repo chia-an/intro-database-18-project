@@ -50,11 +50,22 @@ function hasInfo(columns, infoType){
     return ret;
 };
 
+function search() {
+    var keyword = $("#searchBox").val();
+    var entity = $("#searchEntity :checked").val();
+    var data = {keyword: keyword,
+                entity: entity};
+    
+    console.log(data);
+    
+    ajaxDrawTable(data, true);
+}
+
 function showInfo(cell) {
     console.log(cell);
     var id = cell.getAttribute("id").substring(2);
     var idType = cell.getAttribute("id").substring(0, 1);
-    var title = cell.textContent;
+    var title = $(cell).find("a").text();
     $.ajax({
         type: "POST",
         dataType: "text",
@@ -69,42 +80,80 @@ function showInfo(cell) {
         },
     });
     return false;
-}
-
-function ajaxDrawTable(data){
+};
+/*
+function deleteDialog(cell) {
+    console.log(cell);
+    var id = cell.getAttribute("id").substring(2);
+    var idType = cell.getAttribute("id").substring(0, 1);
+    var title = $(cell).find("a").text();
+    $.ajax({
+        type: "POST",
+        dataType: "text",
+        url: "{{ url_for('delete') }}",
+        data: {[idType]: id},
+        success: function(data, status, xhr) {
+            console.log(data);
+            BootstrapDialog.show({
+                title: title,
+                message: data,
+            });
+        },
+    });
+};
+*/
+function ajaxDrawTable(data, canDelete){
     $.ajax({
         type: "POST",
         dataType: "json",
         data: data,
         url: "{{ url_for('get_data') }}",
         success: function (data) {
-            $("#tableDiv").empty();
-
             var table = document.createElement("table");
             table.id = "result";
             table.class = "display";
-            document.getElementById("tableDiv").appendChild(table);
+            
+            var resultDiv = $("#resultDiv");
+            resultDiv.empty();
+            resultDiv.append(table);
             
             console.log(data);
             $("#result").DataTable({
-                "data": data.data,
-                "columns": data.columns,
-                "columnDefs": [
+                data: data.data,
+                columns: data.columns,
+                columnDefs: [
                     {
+                        /* delete and follow-up search of persons */
                         targets: hasInfo(data.columns, "person"),
                         createdCell: function (td, cellData, rowData, row, col){
-                            $(td).attr("id", "p_" + rowData.personId.toString());
-                            $(td).html("<a href='##' onclick='showInfo(this.parentElement);'>" + cellData + "</a>");
-                            console.log(td);
+                            if("personId" in rowData && data.columns[col].data in rowData){
+                                $(td).attr("id", "p_" + rowData.personId.toString());
+                                var content = "";
+                                if(canDelete){
+                                    content = "<button name='deleteButton'>delete</button> ";
+                                }
+                                $(td).html(content + "<a onclick='showInfo(this.parentElement);'>" + cellData + "</a>");
+                            }
                         },
                     },
                     {
+                        /* delete and follow-up search of films */
                         targets: hasInfo(data.columns, "film"),
                         createdCell: function (td, cellData, rowData, row, col){
-                            $(td).attr("id", "f_" + rowData.filmId.toString());
-                            $(td).html("<a href='##' onclick='showInfo(this.parentElement);'>" + cellData + "</a>");
-                            console.log(td);
+                            if("filmId" in rowData && data.columns[col].data in rowData){
+                                $(td).attr("id", "f_" + rowData.filmId.toString());
+                                var content = "";
+                                if(canDelete){
+                                    content = "<button name='deleteButton'>delete</button> ";
+                                }
+                                $(td).html(content + "<a onclick='showInfo(this.parentElement);'>" + cellData + "</a>");
+                            }
                         },
+                    },
+                    {
+                        /* missing values */
+                        targets: [...Array(data.columns.length).keys()],
+                        defaultContent: "",
                     },
                 ],
             });
@@ -118,22 +167,57 @@ $( document ).ready( function() {
     
     $("#tabDiv").tabs();
     
-    $("#searchButton").click( function () {
-        var keyWord = $("#searchBox").val();
-        console.log(keyWord);
-        
-        var data = {keyWord: keyWord};
-        
-        ajaxDrawTable(data);
-    });
+    $("#searchButton").click(search);
     
-    $('#queryButton').on('click', function () {
+    $("#queryButton").click( function () {
         var queryId = $("#queryList").val();
         console.log(queryId);
         
         var data = {queryId: queryId};
         
         ajaxDrawTable(data);
+    });
+    
+    $("#insertButton").click( function () {
+        var name = $("#insertBox").val();
+        var entity = $("#insertEntity :checked").val();
+        var data = {entity: entity,
+                    name: name};
+        console.log(data);
+        
+        $.ajax({
+            type: "POST",
+            dataType: "text",
+            data: data,
+            url: "{{ url_for('insert_data') }}",
+            success: function (data) {
+                var resultDiv = $("#resultDiv");
+                resultDiv.empty();
+                resultDiv.append(data);
+            },
+        });
+    });
+    
+    $("#resultDiv").on("click", "[name=deleteButton]", function () {
+        var cell = this.parentNode;
+        console.log(cell);
+        var id = cell.getAttribute("id").substring(2);
+        var idType = cell.getAttribute("id").substring(0, 1);
+        var title = $(cell).find("a").text();
+        $.ajax({
+            type: "POST",
+            dataType: "text",
+            url: "{{ url_for('delete') }}",
+            data: {[idType]: id},
+            success: function(data, status, xhr) {
+                console.log(data);
+                BootstrapDialog.show({
+                    title: title,
+                    message: data,
+                });
+                search();
+            },
+        });
     });
 });
 </script>
@@ -142,13 +226,18 @@ $( document ).ready( function() {
     <div class="container">
         <div id="tabDiv">
             <ul>
-                <li><a href="#tabSearch">Search</a></li>
+                <li><a href="#tabSearch">Search / Delete</a></li>
                 <li><a href="#tabQuery">Predefined queries</a></li>
                 <li><a href="#tabInsert">Insert data</a></li>
             </ul>
             
             <div id="tabSearch">
                 Name/Title: <input type="text" id="searchBox">
+                
+                <div id="searchEntity">
+                    <input type="radio" name="searchEntity" value="person" checked="checked">Person
+                    <input type="radio" name="searchEntity" value="film">Film<br>
+                </div>
                 
                 <button id="searchButton">Search</button>
             </div>
@@ -160,14 +249,18 @@ $( document ).ready( function() {
             </div>
             
             <div id="tabInsert">
-                <p>Mauris eleifend est et turpis. Duis id erat. Suspendisse potenti. Aliquam vulputate, pede vel vehicula accumsan, mi neque rutrum erat, eu congue orci lorem eget lorem. Vestibulum non ante. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Fusce sodales. Quisque eu urna vel enim commodo pellentesque. Praesent eu risus hendrerit ligula tempus pretium. Curabitur lorem enim, pretium nec, feugiat nec, luctus a, lacus.</p>
-                <p>Duis cursus. Maecenas ligula eros, blandit nec, pharetra at, semper at, magna. Nullam ac lacus. Nulla facilisi. Praesent viverra justo vitae neque. Praesent blandit adipiscing velit. Suspendisse potenti. Donec mattis, pede vel pharetra blandit, magna ligula faucibus eros, id euismod lacus dolor eget odio. Nam scelerisque. Donec non libero sed nulla mattis commodo. Ut sagittis. Donec nisi lectus, feugiat porttitor, tempor ac, tempor vitae, pede. Aenean vehicula velit eu tellus interdum rutrum. Maecenas commodo. Pellentesque nec elit. Fusce in lacus. Vivamus a libero vitae lectus hendrerit hendrerit.</p>
+                Name/Title: <input type="text" id="insertBox"><br>
                 
-                <button id="insertButton">Insert</button>
+                <div id="insertEntity">
+                    <input type="radio" name="insertEntity" value="person" checked="checked">Person
+                    <input type="radio" name="insertEntity" value="film">Film<br>
+                </div>
+                
+                <button id="insertButton">Insesrt</button>
             </div>
         </div>
         
-        <div id="tableDiv"></div>
+        <div id="resultDiv"></div>
     </div>
 </body>
 

@@ -9,18 +9,22 @@ app.debug = True
 
 @app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('index.html')
 
 
-@app.route('/_get_data', methods=["POST"])
+@app.route('/_get_data', methods=['POST'])
 def get_data():
     """
     This function is called by an ajax function call to
     pass queries parameters and to get query results.
     """
 
-    # Parameters for SQl queries is given by the POST method
-    print(request.form)
+    # Parameters for SQl queries is given by the POST method.
+    # queryId is for predefined queries, others are for keyword search.
+    # queryId: indicate predefined queries
+    # keyword: for keyword search
+    # entity: searching persons or films
+    print('get data:', request.form)
 
     # The query/search results is returned in JSON format:
     # 'data': [{FIELD_1: VALUE_1_1, FIELD_2: VALUE_1_2, ...},
@@ -52,6 +56,7 @@ def get_data():
     for row in data:
         row['personId'] = random.random()
         row['filmId'] = random.random()
+        row.pop('column_' + str(random.randrange(n_cols) + 1))
 
     json_data = {'columns': cols, 'data': data}
     print(json_data)
@@ -59,14 +64,15 @@ def get_data():
     return json.dumps(json_data)
 
 
-@app.route('/_get_info', methods=["POST"])
+@app.route('/_get_info', methods=['POST'])
 def get_info():
     """
     This function is for follow-up info on a person or a film.
     The request form has the form {'p': personId} or {'f': filmId}.
+    The return value is displayed as a string.
     """
 
-    print(request.form)
+    print('get info:', request.form)
 
     if 'p' in request.form:
         ret = 'personID: ' + request.form['p']
@@ -80,5 +86,32 @@ def get_info():
     return ret
 
 
-if __name__ == "__main__":
+@app.route('/_insert_data', methods=['POST'])
+def insert_data():
+    """
+    Insert new person or film.
+    The request form is a dictionary:
+        entity: 'film' or 'person'
+        name: name/title of the new data entry
+    """
+
+    print('insert:', request.form)
+
+    return 'Insert success.'
+
+
+@app.route('/_delete', methods=['POST'])
+def delete():
+    """
+    Delete a person or a film.
+    The request form has the form {'p': personId} or {'f': filmId}.
+    The return value can be any message.
+    """
+
+    print('delete:', request.form)
+
+    return 'Delete success.'
+
+
+if __name__ == '__main__':
     app.run()
