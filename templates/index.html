@@ -27,8 +27,9 @@
 function createQueryList(){
     //Create and append select list
     var selectList = document.createElement("select");
-    selectList.id = "queryList";
     document.getElementById("queryDiv").appendChild(selectList);
+    selectList.id = "queryList";
+    selectList.onchange = function(){ updateParam(selectList.selectedIndex); }
 
     //Create and append the options
     for (var i = 0; i < 8; i++) {
@@ -81,27 +82,66 @@ function showInfo(cell) {
     });
     return false;
 };
-/*
-function deleteDialog(cell) {
-    console.log(cell);
-    var id = cell.getAttribute("id").substring(2);
-    var idType = cell.getAttribute("id").substring(0, 1);
-    var title = $(cell).find("a").text();
-    $.ajax({
-        type: "POST",
-        dataType: "text",
-        url: "{{ url_for('delete') }}",
-        data: {[idType]: id},
-        success: function(data, status, xhr) {
-            console.log(data);
-            BootstrapDialog.show({
-                title: title,
-                message: data,
-            });
-        },
-    });
-};
-*/
+
+function updateParam(queryId){
+    console.log(queryId);
+    div = $("#queryParamDiv");
+    //p1 = $("#queryParam1");
+    //p2 = $("#queryParam2");
+    p1 = document.getElementById("queryParam1");
+    p2 = document.getElementById("queryParam2");
+    switch(queryId){
+        case 0:
+            p1.value = "France";
+            p1.style.display = "";
+            p2.value = "";
+            p2.style.display = "none";
+            break;
+        case 1:
+            p1.value = "2010";
+            p1.style.display = "";
+            p2.value = "";
+            p2.style.display = "none";
+            break;
+        case 2:
+            p1.value = "2013";
+            p1.style.display = "";
+            p2.value = "USA";
+            p2.style.display = "";
+            break;
+        case 3:
+            p1.value = "";
+            p1.style.display = "none";
+            p2.value = "";
+            p2.style.display = "none";
+            break;
+        case 4:
+            p1.value = "";
+            p1.style.display = "none";
+            p2.value = "";
+            p2.style.display = "none";
+            break;
+        case 5:
+            p1.value = "";
+            p1.style.display = "none";
+            p2.value = "";
+            p2.style.display = "none";
+            break;
+        case 6:
+            p1.value = "";
+            p1.style.display = "none";
+            p2.value = "";
+            p2.style.display = "none";
+            break;
+        case 7:
+            p1.value = "VG";
+            p1.style.display = "";
+            p2.value = "";
+            p2.style.display = "none";
+            break;
+    };
+}
+
 function ajaxDrawTable(data, canDelete){
     $.ajax({
         type: "POST",
@@ -171,9 +211,14 @@ $( document ).ready( function() {
     
     $("#queryButton").click( function () {
         var queryId = $("#queryList").val();
-        console.log(queryId);
+        var p1 = $("#queryParam1").val();
+        var p2 = $("#queryParam2").val();
         
-        var data = {queryId: queryId};
+        var data = {queryId: queryId,
+                    param1: p1,
+                    param2: p2,};
+        
+        console.log(data);
         
         ajaxDrawTable(data);
     });
@@ -244,7 +289,10 @@ $( document ).ready( function() {
             
             <div id="tabQuery">
                 <div id="queryDiv"></div>
-                
+                <div id="queryParamDiv">
+                    <input type="text" id="queryParam1" value="France">
+                    <input type="text" id="queryParam2" style="display: none"><br>
+                </div>
                 <button id="queryButton">Go</button>
             </div>
             
